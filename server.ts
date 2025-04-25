@@ -9,6 +9,8 @@ import { setupSQLConnectionPool } from './src/db/connectDB'
 import cookieParser from "cookie-parser"
 import multer from 'multer';
 import sellerRoutes from './src/routes/seller.route'
+import chatBotRoutes from './src/routes/chat.route'
+import tempRoutes from './src/routes/tempRoute'
 
 const upload = multer();
 
@@ -60,6 +62,8 @@ app.use("/api/users", userRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/category", categoryRoutes);
 app.use("/api/seller", sellerRoutes);
+app.use("/api/chat", chatBotRoutes);
+app.use("/tempRoute", tempRoutes)
 
 app.listen(port, hostname, () => {
   console.log(`Server is listening on ${hostname}:${port}`);
