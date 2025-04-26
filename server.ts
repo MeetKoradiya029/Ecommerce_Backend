@@ -20,7 +20,7 @@ const upload = multer();
 
 const app = express();
 const port: any = process.env.PORT || 3000;
-const hostname = "192.168.1.117";
+const hostname = '0.0.0.0';
 
 app.use(express.json())
 //Middleware to setup sql connection pool

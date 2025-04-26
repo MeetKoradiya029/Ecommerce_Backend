@@ -24,6 +24,7 @@ import { MemorySaver } from "@langchain/langgraph";
 
 
 
+
 const chatBotAssistant = async (req:any, res:any) => {
     try {
         const { prompt } = req.body;
@@ -32,11 +33,10 @@ const chatBotAssistant = async (req:any, res:any) => {
         //#region 
         const retrieveSchema = z.object({ query: z.string() });
 
-
         //#endregion
 
         const model = new ChatOpenAI({
-            temperature: 0.7,
+            temperature: 0.5,
             model:'gpt-4o-mini',
             openAIApiKey: process.env.OPENAI_API_KEY
         });
