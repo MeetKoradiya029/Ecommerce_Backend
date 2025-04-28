@@ -16,8 +16,18 @@ import { OpenAIEmbeddings } from "@langchain/openai";
 import * as cheerio from 'cheerio';
 import { CheerioWebBaseLoader } from "@langchain/community/document_loaders/web/cheerio";
 
+let globalVectorStore:PineconeStore | null = null;
+
+declare global {
+    var globalVectorStore: PineconeStore | undefined;
+}
+
 
 export async function loadCompanyKnowledge() {
+
+    if (global.globalVectorStore) {
+        return global.globalVectorStore;
+    }
 
     /*------------ Load Documents ------------*/
     //#region 
@@ -45,7 +55,7 @@ export async function loadCompanyKnowledge() {
 
     const embeddings = new OpenAIEmbeddings({
         openAIApiKey: process.env.OPENAI_API_KEY!,
-        model: 'text-embedding-3-small',
+        model: 'text-embedding-3-large',
     });
     // console.log("embeddings >>>", embeddings);
 
@@ -73,13 +83,25 @@ export async function loadCompanyKnowledge() {
         pineconeIndex: pinecone.Index(process.env.PINECONE_INDEX!),
     });
 
-    await vectorStore.addDocuments(splitDocs);
+    // await vectorStore.addDocuments(splitDocs);
+
+    const batchSize = 50;
+
+    for (let i = 0; i < splitDocs.length; i += batchSize) {
+        const batch = splitDocs.slice(i, i + batchSize);
+        await vectorStore.addDocuments(batch);
+        console.log(`Uploaded batch ${i / batchSize + 1}`);
+    }
+
+    global.globalVectorStore = vectorStore;
+
+
     // console.log("vectorStore >>>", vectorStore);
     
     // return vectorStore.asRetriever({
     //     k: 4
     // });
 
-    return vectorStore
+    return global.globalVectorStore
 
 }

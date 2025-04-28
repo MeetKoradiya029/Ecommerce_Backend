@@ -10,6 +10,7 @@
     "@langchain/langgraph": "^0.2.67",
     "@langchain/openai": "^0.5.6",
     "@langchain/pinecone": "^0.2.0",
+    "@modelcontextprotocol/sdk": "^1.10.2",
     "@pinecone-database/pinecone": "^5.1.1",
     "@types/body-parser": "^1.19.5",
     "@types/cookie-parser": "^1.4.7",
@@ -26,6 +27,7 @@
     "d3-dsv": "^2.0.0",
     "debug": "^4.3.4",
     "dotenv": "^16.4.5",
+    "exceljs": "^4.4.0",
     "express": "^4.18.2",
     "firebase-admin": "^12.0.0",
     "fs-extra": "^11.3.0",
@@ -42,6 +44,7 @@
     "pdf-parse": "^1.1.1",
     "remove-markdown": "^0.6.0",
     "sanitize-html": "^2.16.0",
+    "typeorm": "^0.3.22",
     "xlsx": "^0.18.5",
     "zod": "^3.24.3"
   },

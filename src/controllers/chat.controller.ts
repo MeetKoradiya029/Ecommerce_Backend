@@ -21,12 +21,15 @@ import {
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 import { toolsCondition } from "@langchain/langgraph/prebuilt";
 import { MemorySaver } from "@langchain/langgraph";
+import { PineconeStore } from "@langchain/pinecone";
+
 
 
 
 const chatBotAssistant = async (req:any, res:any) => {
     try {
         const { prompt } = req.body;
+        let vectorStore: PineconeStore|undefined = undefined
 
         /* ----- Variables For METHOD 3  --------*/
         //#region 
@@ -37,7 +40,7 @@ const chatBotAssistant = async (req:any, res:any) => {
 
         const model = new ChatOpenAI({
             temperature: 0.7,
-            model:'gpt-4o-mini',
+            model:'gpt-4.1-mini',
             openAIApiKey: process.env.OPENAI_API_KEY
         });
         
@@ -55,17 +58,23 @@ const chatBotAssistant = async (req:any, res:any) => {
 
         /*------------------------ METHOD 1 -------------------------*/
         //#region 
-        const vectorStore = await loadCompanyKnowledge();
+
+        vectorStore = global.globalVectorStore;
+
+        if (!vectorStore) {
+            vectorStore = await loadCompanyKnowledge();
+        }
+        // const vectorStore = await loadCompanyKnowledge();
 
         const retrieve = tool(
             async ({ query }) => {
                 const normalizedQuery = query.trim().replace(/[?!.]*$/, ""); // Removes ?, !, .
-                const retrievedDocs = await vectorStore.similaritySearch(normalizedQuery, 10);
-                // console.log("retrievedDocs >>>", retrievedDocs);
+                const retrievedDocs:any = await vectorStore?.similaritySearch(normalizedQuery, 10);
+                console.log("retrievedDocs >>>", retrievedDocs);
                 
                 const serialized = retrievedDocs
                     .map(
-                        (doc) => `Source: ${doc.metadata.source}\nContent: ${doc.pageContent}`
+                        (doc:any) => `Source: ${doc.metadata.source}\nContent: ${doc.pageContent}`
                     )
                     .join("\n");
                 return [serialized, retrievedDocs];
@@ -87,7 +96,7 @@ const chatBotAssistant = async (req:any, res:any) => {
             console.log(" queryOrRespond Called ---");
             
             const llmWithTools = model.bindTools([retrieve]);
-            const response = await llmWithTools.invoke(state.messages);
+            const response = await llmWithTools.invoke(state.messages, {tool_choice:"required"});
             // MessagesState appends messages to state instead of overwriting
             return { messages: [response] };
         }

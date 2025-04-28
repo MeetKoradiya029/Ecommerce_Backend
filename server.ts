@@ -11,6 +11,7 @@ import multer from 'multer';
 import sellerRoutes from './src/routes/seller.route'
 import chatBotRoutes from './src/routes/chat.route'
 import tempRoutes from './src/routes/tempRoute'
+import { loadCompanyKnowledge } from './src/utils/vectorStore';
 
 const upload = multer();
 
@@ -65,7 +66,18 @@ app.use("/api/seller", sellerRoutes);
 app.use("/api/chat", chatBotRoutes);
 app.use("/tempRoute", tempRoutes)
 
-app.listen(port, hostname, () => {
-  console.log(`Server is listening on ${hostname}:${port}`);
-});
 
+async function main() {
+  await loadCompanyKnowledge();
+  startServer();
+}
+
+
+function startServer() {
+  app.listen(port, hostname, () => {
+    console.log(`Server is listening on ${hostname}:${port}`);
+  });
+
+}
+
+main();
