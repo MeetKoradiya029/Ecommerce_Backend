@@ -26,6 +26,7 @@ import { PineconeStore } from "@langchain/pinecone";
 
 
 
+
 const chatBotAssistant = async (req:any, res:any) => {
     try {
         const { prompt } = req.body;
@@ -34,7 +35,6 @@ const chatBotAssistant = async (req:any, res:any) => {
         /* ----- Variables For METHOD 3  --------*/
         //#region 
         const retrieveSchema = z.object({ query: z.string() });
-
 
         //#endregion
 

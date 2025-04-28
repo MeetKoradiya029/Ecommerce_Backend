@@ -8,8 +8,6 @@ import pdfParse from 'pdf-parse';
 import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
 import { DocxLoader } from "@langchain/community/document_loaders/fs/docx";
 import { CSVLoader } from "@langchain/community/document_loaders/fs/csv";
-
-
 import { Pinecone } from "@pinecone-database/pinecone";
 import { PineconeStore } from "@langchain/pinecone";
 import { OpenAIEmbeddings } from "@langchain/openai";
@@ -31,16 +29,16 @@ export async function loadCompanyKnowledge() {
 
     /*------------ Load Documents ------------*/
     //#region 
-    const filePath = path.join(process.cwd(), 'Docker_Guide.pdf')
+    const filePath = path.join(process.cwd(), 'sql.pdf')
     // const dataBuffer = fs.readFileSync(filePath);
     // const pdfData = await pdfParse(dataBuffer);
     // const text = pdfData.text;
     // const loader = new DocxLoader(filePath);
-    const loader = new PDFLoader(filePath);
+    const loader = new PDFLoader(filePath, { splitPages: true });
     const docs = await loader.load()
     //#endregion
 
-    
+
     //#region 
     // const cheerioLoader = new CheerioWebBaseLoader("https://www.datasostech.com/about-us/",{
     //     selector:"body"
@@ -48,10 +46,6 @@ export async function loadCompanyKnowledge() {
 
     // const docs = await cheerioLoader.load();
     //#endregion
-
-
-    
-    
 
     const embeddings = new OpenAIEmbeddings({
         openAIApiKey: process.env.OPENAI_API_KEY!,
@@ -68,9 +62,9 @@ export async function loadCompanyKnowledge() {
     // const docs = await splitter.createDocuments([text]);
 
     const splitDocs = await splitter.splitDocuments(docs)
-    
-    
-    
+
+
+
     const pinecone = new Pinecone({
         apiKey: process.env.PINECONE_API_KEY || ""
     })
@@ -97,7 +91,7 @@ export async function loadCompanyKnowledge() {
 
 
     // console.log("vectorStore >>>", vectorStore);
-    
+
     // return vectorStore.asRetriever({
     //     k: 4
     // });
