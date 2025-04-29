@@ -19,11 +19,24 @@ const upload = multer();
 
 
 
+
 const app = express();
 const port: any = process.env.PORT || 3000;
-const hostname = '0.0.0.0';
+const hostname = '192.168.1.117';
 
 app.use(express.json())
+
+app.use(cors());
+
+app.options('*', cors());
+
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', 'http://192.168.1.117:3000');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  next();
+});
+
 //Middleware to setup sql connection pool
 
 
@@ -44,7 +57,6 @@ app.use(
 );
 
 
-app.use(cors());
 
 
 app.get("/api", async (req, res) => {
@@ -77,7 +89,6 @@ function startServer() {
   app.listen(port, hostname, () => {
     console.log(`Server is listening on ${hostname}:${port}`);
   });
-
 }
 
 main();

@@ -1,5 +1,8 @@
 import * as ExcelJS from 'exceljs';
 import * as sql from 'mssql';
+import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
+
+
 
 const sqlConfig: sql.config = {
     user: 'sa',
@@ -12,6 +15,12 @@ const sqlConfig: sql.config = {
         trustServerCertificate: true,
     },
 };
+
+const server = new McpServer({
+    name: "Demo",
+    version: "1.0.0"
+});
+
 
 
 export async function uploadExcelToDB(filePath: string, tableName?: string) {

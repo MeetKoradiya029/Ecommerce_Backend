@@ -24,6 +24,7 @@ import { MemorySaver } from "@langchain/langgraph";
 import { PineconeStore } from "@langchain/pinecone";
 
 
+const checkpointer = new MemorySaver();
 
 
 
@@ -70,7 +71,7 @@ const chatBotAssistant = async (req:any, res:any) => {
             async ({ query }) => {
                 const normalizedQuery = query.trim().replace(/[?!.]*$/, ""); // Removes ?, !, .
                 const retrievedDocs:any = await vectorStore?.similaritySearch(normalizedQuery, 10);
-                console.log("retrievedDocs >>>", retrievedDocs);
+                // console.log("retrievedDocs >>>", retrievedDocs);
                 
                 const serialized = retrievedDocs
                     .map(
@@ -120,6 +121,9 @@ const chatBotAssistant = async (req:any, res:any) => {
                     break;
                 }
             }
+
+            console.log("recentToolMessages >>>", recentToolMessages);
+            
             let toolMessages = recentToolMessages.reverse();
 
             // Format into prompt
@@ -146,7 +150,7 @@ const chatBotAssistant = async (req:any, res:any) => {
 
             // Run
             const response = await model.invoke(prompt);
-            console.log(" generate() => response ----- : ", response);
+            // console.log(" generate() => response ----- : ", response);
             
             return { messages: [response] };
         }
@@ -168,7 +172,7 @@ const chatBotAssistant = async (req:any, res:any) => {
         const graph = graphBuilder.compile();
 
 
-        const checkpointer = new MemorySaver();
+        
         const graphWithMemory = graphBuilder.compile({ checkpointer });
 
         const threadId = req.body.threadId || req.sessionID || req.user?.id || "guest"; // You can use any unique ID here
@@ -184,8 +188,10 @@ const chatBotAssistant = async (req:any, res:any) => {
         // );
 
         const pastMessages = await memory.chatHistory.getMessages();
+        console.log("pastMessages >>>", pastMessages);
+        
 
-        const result = await graph.invoke(
+        const result = await graphWithMemory.invoke(
             {
                 messages: [
                     ...pastMessages,
@@ -197,9 +203,13 @@ const chatBotAssistant = async (req:any, res:any) => {
 
         // Step 7: Save latest to memory
         const newMessages = result.messages;
+
         for (const msg of newMessages) {
             await memory.chatHistory.addMessage(msg);
         }
+
+        console.log("memory chat messages", memory.chatHistory.getMessages());
+        
         // console.log("final result >>>>>>>>>", result);
         
 

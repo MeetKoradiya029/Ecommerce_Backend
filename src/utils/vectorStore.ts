@@ -29,7 +29,7 @@ export async function loadCompanyKnowledge() {
 
     /*------------ Load Documents ------------*/
     //#region 
-    const filePath = path.join(process.cwd(), 'sql.pdf')
+    const filePath = path.join(process.cwd(), 'HubSpot_Deal_Workflow.pdf')
     // const dataBuffer = fs.readFileSync(filePath);
     // const pdfData = await pdfParse(dataBuffer);
     // const text = pdfData.text;
