@@ -11,7 +11,7 @@ import { QuerySqlTool } from "langchain/tools/sql";
 import { StateGraph } from "@langchain/langgraph";
 import { BufferMemory, ChatMessageHistory } from "langchain/memory";
 import { AIMessage, BaseMessage, HumanMessage } from "@langchain/core/messages";
-import { uploadExcelToDB } from "../utils/insertExcelToDB";
+// import { uploadExcelToDB } from "../utils/insertExcelToDB";
 import * as path from 'path';
 
 
@@ -52,7 +52,7 @@ const excelChatAssistance = async (req: any, res: any) => {
             appDataSource: datasource,
         });
 
-        await uploadExcelToDB(filePath)
+        // await uploadExcelToDB(filePath)
 
 
         const InputStateAnnotation = Annotation.Root({

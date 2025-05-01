@@ -12,6 +12,7 @@ import sellerRoutes from './src/routes/seller.route'
 import chatBotRoutes from './src/routes/chat.route'
 import tempRoutes from './src/routes/tempRoute'
 import { loadCompanyKnowledge } from './src/utils/vectorStore';
+import sqlAgentRoutes from './src/routes/sqlAgent.routes';
 
 const upload = multer();
 
@@ -76,7 +77,8 @@ app.use("/api/products", productRoutes);
 app.use("/api/category", categoryRoutes);
 app.use("/api/seller", sellerRoutes);
 app.use("/api/chat", chatBotRoutes);
-app.use("/tempRoute", tempRoutes)
+app.use("/tempRoute", tempRoutes);
+app.use("/agents", sqlAgentRoutes);
 
 
 async function main() {

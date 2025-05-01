@@ -1,114 +1,108 @@
-import * as ExcelJS from 'exceljs';
-import * as sql from 'mssql';
-import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
+import XLSX from 'xlsx';
+import pg from "pg";
 
 
 
-const sqlConfig: sql.config = {
-    user: 'sa',
-    password: 'sa123$',
-    server: 'localhost',
-    database: 'Meet',
-    port: 1433,
-    options: {
-        encrypt: false,
-        trustServerCertificate: true,
-    },
-};
-
-const server = new McpServer({
-    name: "Demo",
-    version: "1.0.0"
-});
-
-
-
-export async function uploadExcelToDB(filePath: string, tableName?: string) {
-    const pool = await sql.connect(sqlConfig);
-    const workbookReader = new ExcelJS.stream.xlsx.WorkbookReader(filePath, {});
-    console.log("pool >>>", pool);
-    
-    console.log("workbookReader >>>>>", workbookReader);
-    
-
+export async function dumpExcelToPostgreSQL() {
    
 
-    for await (const worksheetReader of workbookReader) {
+    const pool = new pg.Pool({
+        user: 'postgres',
+        host: 'localhost',
+        database: 'Meet',
+        password: 'meet1234',
+        port: 5432,
+    });
 
-        const sheetName = (worksheetReader as any).name; // fallback if not found
-        const cleanSheetName = sheetName.replace(/[^a-zA-Z0-9_]/g, '_');
+    const client = await pool.connect();
+    try {
 
-        console.log(`📝 Processing Sheet: ${cleanSheetName}`);
-        let table: sql.Table | any = null;
-        const batchSize = 5000;
-        let rowCount = 0;
+        const workbook = XLSX.readFile('nyc_01.xlsx');
 
-        const tableAlreadyExists = await tableExistInDB(pool, cleanSheetName);
-
-        for await (const row of worksheetReader) {
-            const sheetRow:any = row
-            const columns = (sheetRow.values.slice(1) as string[]);
-            if (columns.length !== 0) {
-                // Only for first data set
-
-                if (!tableAlreadyExists) {
-                    await createTable(pool, cleanSheetName, columns);
-                    console.log(`✅ Table [${cleanSheetName}] created.`);
-                }
+        // Get all sheet names
+        const sheetNames = workbook.SheetNames;
         
-                table = new sql.Table(tableName);
-                table.create = false;
-                for (const col of columns) {
-                    console.log("");
-                    
-                    table.columns.add(col, sql.NVarChar(sql.MAX)); // or better: detect type
-                }
-                continue; // Skip header row
-            }
 
+        // Extract data from each sheet
+        const sheetsData: any = {};
+        sheetNames.forEach(sheetName => {
+            const worksheet = workbook.Sheets[sheetName];
+            
+            
+            sheetsData[sheetName] = XLSX.utils.sheet_to_json(worksheet);
+            
+        });
 
-            table?.rows.add(...sheetRow.values.slice(1));
-            rowCount++;
+        // console.log("sheetsData >>>", sheetsData);
+        
+        await client.query('BEGIN'); // Start transaction
 
-            console.log("");
+        for (const sheetName in sheetsData) {
+            const data = sheetsData[sheetName];
+            if (data.length === 0) continue; // Skip empty sheets
+
+            // Generate a safe table name (replace spaces/special chars)
+            const tableName = `sheet_${sheetName.replace(/\s+/g, '_')}`;
+
+            // Drop table if it exists (optional)
+            await client.query(`DROP TABLE IF EXISTS ${tableName}`);
+
+            // Dynamically create table based on first row's keys
+            const allkeys = getAllDistinctKeys(data);
+            const columns = allkeys.map(key =>
+                `${key} TEXT` // Default to TEXT (adjust types if needed)
+            ).join(', ');
+
+            console.log("columns >>>", columns);
             
 
-            if (rowCount >= batchSize) {
-                await pool.request().bulk(table);
-                table = new sql.Table(tableName); // Reset table for next batch
-                table.create = false;
-                rowCount = 0;
+            await client.query(`CREATE TABLE ${tableName} (${columns})`);
+
+            // Insert data
+            for (const row of data) {
+                const sanitizedRow:any = {};
+                Object.keys(row).forEach(key => {
+                    const sanitizedKey = key.toLowerCase().replace(/\s+/g, '_');
+                    sanitizedRow[sanitizedKey] = row[key];
+                });
+
+                
+                
+                // const values = keys.map(key => row[key]);
+                const placeholders = allkeys.map((_, i) => `$${i + 1}`).join(', ');
+
+              
+
+                const values = allkeys.map(key => sanitizedRow[key as string] || null);
+
+                
+
+                await client.query(
+                    `INSERT INTO ${tableName} (${allkeys.join(', ')}) VALUES (${placeholders})`,
+                    values
+                );
             }
         }
 
-        // Insert remaining rows
-        if (table && table.rows.length > 0) {
-            await pool.request().bulk(table);
-        }
+        await client.query('COMMIT'); // Commit transaction
+        console.log('All sheets dumped to PostgreSQL successfully!');
+    } catch (error) {
+        await client.query('ROLLBACK'); // Rollback on error
+        console.error('Error:', error);
+    } finally {
+        client.release();
+        await pool.end();
     }
-
-    
-
-    console.log('✅ Excel data uploaded successfully.');
 }
 
 
-async function tableExistInDB(pool: sql.ConnectionPool, tableName:string) : Promise<boolean>{
-    const result = await pool.request()
-    .input("tableName", sql.NVarChar, tableName)
-    .query(`
-        SELECT (CASE WHEN OBJECT_ID(@tableName, 'U') IS NOT NULL THEN 1 ELSE 0 END) AS isExists`);
-
-    console.log("result", result);
-    
-    return result.recordset[0].isExists === 1
+function getAllDistinctKeys(data:any[]) {
+    const keys = new Set();
+    data.forEach(row => {
+        Object.keys(row).forEach(key => {
+            keys.add(key.toLowerCase().replace(/\s+/g, '_')); // Sanitize keys
+        });
+    });
+    return Array.from(keys);
 }
 
-
-async function createTable(pool: sql.ConnectionPool, tableName:string, columns:string[]) {
-    const columnsDefinition = columns.map(col => `[${col}] NVARCHAR(MAX)`).join(", ");
-
-    const query =   `CREATE TABLE ${tableName} (${columnsDefinition})`
-
-    await pool.request().query(query);
-}

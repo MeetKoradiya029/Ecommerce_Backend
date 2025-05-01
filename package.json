@@ -2,12 +2,14 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon --exec ts-node server.ts",
+    "mcp": "ts-node  src/mcp/mcpServer.ts",
     "build": "tsc"
   },
   "dependencies": {
     "@langchain/community": "^0.3.41",
     "@langchain/core": "^0.3.48",
     "@langchain/langgraph": "^0.2.67",
+    "@langchain/mcp-adapters": "^0.4.2",
     "@langchain/openai": "^0.5.6",
     "@langchain/pinecone": "^0.2.0",
     "@modelcontextprotocol/sdk": "^1.9.0",
@@ -42,6 +44,7 @@
     "node-schedule": "^2.1.1",
     "nodemon": "^3.1.0",
     "pdf-parse": "^1.1.1",
+    "pg": "^8.15.6",
     "remove-markdown": "^0.6.0",
     "sanitize-html": "^2.16.0",
     "typeorm": "^0.3.22",
@@ -55,6 +58,7 @@
     "@types/jsonwebtoken": "^9.0.6",
     "@types/mssql": "^9.1.5",
     "@types/node": "^20.11.30",
+    "@types/pg": "^8.11.14",
     "ts-node": "^10.9.2"
   }
 }
