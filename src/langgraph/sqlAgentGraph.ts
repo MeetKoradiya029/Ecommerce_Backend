@@ -3,8 +3,16 @@ import { Annotation, StateGraph } from "@langchain/langgraph";
 import { z } from "zod";
 import { ChatOpenAI } from "@langchain/openai";
 import { StructuredToolInterface } from "@langchain/core/tools";
+import pg from "pg";
 
 // const mcpQueryTool = new MCPQueryTool();
+ const pool = new pg.Pool({
+        user: 'postgres',
+        host: 'localhost',
+        database: 'Meet',
+        password: 'meet1234',
+        port: 5432,
+    });
 
 const llm = new ChatOpenAI({
     temperature: 0.7,
@@ -18,22 +26,61 @@ const StateAnnotation = Annotation.Root({
     input: Annotation<string>(),
     result: Annotation<string | undefined>(),
     answer: Annotation<string | undefined>(),
+    history: Annotation<{ question: string, answer: string }[]>(),
+    sessionId: Annotation<string>()
 });
+
+async function loadHistory(sessionId: string) {
+    const res = await pool.query(
+        `SELECT question, answer FROM Chat_History WHERE session_id = $1 ORDER BY message_order`,
+        [sessionId]
+    );
+    return res.rows;
+}
+
+async function saveHistory(sessionId: string, history: { question: string, answer: string }[]) {
+    await pool.query(`DELETE FROM chat_history WHERE session_id = $1`, [sessionId]);
+    const values = history.map((entry, idx) => [sessionId, idx, entry.question, entry.answer]);
+    const query = `INSERT INTO chat_history (session_id, message_order, question, answer) VALUES ($1, $2, $3, $4)`;
+
+    for (const row of values) {
+        await pool.query(query, row);
+    }
+}
+
 
 
 const generateQuery = async (state: typeof StateAnnotation.State) => {
     // Use the LLM to generate a PostgreSQL query from the user's question
+    const sessionHistory = await loadHistory(state.sessionId);
+
+    const conversationHistory = (sessionHistory || []).flatMap(entry => ([
+        { role: "user", content: entry.question },
+        { role: "assistant", content: entry.answer }
+    ]));
+    console.log("Conversation history >>>>", conversationHistory);
+
     const prompt = `
-        You are a PostgreSQL query generator. Based on the user's question, generate a valid SQL query.
-        Question: "${state.question}"
+        You are a PostgreSQL expert. Based on the provided conversation and the latest user message, write a SQL query.
+        Always Convert Data types to PostgreSQL compatible types.
+        If the question is available in provided conversation, give the answer from the given conversation history.
+        If the question is not available in provided conversation, use the latest user message to generate the SQL query.
+        Conversation (JSON):
+        ${JSON.stringify(sessionHistory, null, 2)}
+
+        User Question: ${state.question}
         SQL Query:
+
     `;
 
-    const response = await llm.invoke([{ role: "user", content: prompt }]);
+    console.log("prompt for generate SQL query", prompt);
+    
+
+    const response = await llm.invoke([...conversationHistory,{ role: "user", content: prompt }]);
     const sqlQuery = response.text.trim();
 
 
-    return { input: sqlQuery };
+    return { input: sqlQuery, history: sessionHistory };
 };
 
 const executeQuery = async (state: typeof StateAnnotation.State, config: any) => {
@@ -62,17 +109,26 @@ const executeQuery = async (state: typeof StateAnnotation.State, config: any) =>
 const generateAnswer = async (state: typeof StateAnnotation.State) => {
     // Format the result into a user-friendly answer
     try {
+
+        const conversationHistory = (state.history || []).flatMap(entry => ([
+            { role: "user", content: entry.question },
+            { role: "assistant", content: entry.answer }
+        ]));
+        console.log("Conversation history >>>>", conversationHistory);
         const prompt = `
             You are a helpful AI assistant. Convert the SQL query result into a natural language answer for the user based on their original question.
             Question:${state.question}
             SQL Result (as JSON):${state.result}
             Provide a concise, human-readable answer:`;
 
-        const response = await llm.invoke([{ role: "user", content: prompt }]);
+        const response = await llm.invoke([...conversationHistory, { role: "user", content: prompt }]);
         const answer = response.text.trim();
+        const updatedHistory = [...(state.history || []), { question: state.question, answer }];
+        await saveHistory(state.sessionId, updatedHistory);
         console.log("Generated natural language answer >>>>", answer);
+        console.log("Updated history >>>>", updatedHistory);
 
-        return { answer };
+        return { answer, history: updatedHistory };
     } catch (error) {
         console.error("Error generating natural language answer:", error);
         return { answer: "Sorry, I couldn't generate a natural language response for this result." };

@@ -1,16 +1,17 @@
 import { MultiServerMCPClient } from "@langchain/mcp-adapters";
 import { sqlAgentGraph } from "../langgraph/sqlAgentGraph";
 import path from "path";
-
-import { createMcpServer } from "../mcp/mcpServer";
-import { McpQueryTool } from "../tools/mcpSqlTool";
-import { PassThrough } from "stream";
 import { dumpExcelToPostgreSQL } from "../utils/insertExcelToDB";
+
 
 
 export const sqlAgentChatBot = async (req: any, res: any) => {
     try {
-        const { prompt } = req.body;
+        const { prompt, sessionId } = req.body;
+
+        if (!sessionId) {
+            return res.status(400).json({ error: "Missing sessionId in request body." });
+        }
 
         // const { stdin, stdout } = require('node:stream');
 
@@ -31,11 +32,17 @@ export const sqlAgentChatBot = async (req: any, res: any) => {
         await client.initializeConnections();
 
         // 3. Retrieve tools from the MCP server
-        const tools = await client.getTools("embedded_postgres")    
-
+        const tools = await client.getTools("embedded_postgres")   
+        
     
         // Invoke the LangGraph workflow
-        const state = await sqlAgentGraph.invoke({ question: prompt }, {
+        const state = await sqlAgentGraph.invoke(
+            { 
+                question: prompt,
+                sessionId: sessionId,
+                history: []     // This will be overwritten by `loadHistory` inside the graph 
+            }, 
+            {
             configurable: {
                 tools: [...tools], // Pass the tools array
             },
