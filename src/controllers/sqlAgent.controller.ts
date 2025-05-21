@@ -8,13 +8,14 @@ import { dumpExcelToPostgreSQL } from "../utils/insertExcelToDB";
 export const sqlAgentChatBot = async (req: any, res: any) => {
     try {
         const { prompt, sessionId } = req.body;
-
+        
         if (!sessionId) {
             return res.status(400).json({ error: "Missing sessionId in request body." });
         }
 
         // const { stdin, stdout } = require('node:stream');
 
+        // await dumpExcelToSQLServer(req.sql);
         await dumpExcelToPostgreSQL();
 
         const mcpServerPath = path.resolve(__dirname, "../mcp/mcpServer.ts");
@@ -28,12 +29,15 @@ export const sqlAgentChatBot = async (req: any, res: any) => {
             },
         });
 
+        
+
         // 2. Initialize connections to all servers
         await client.initializeConnections();
 
         // 3. Retrieve tools from the MCP server
         const tools = await client.getTools("embedded_postgres")   
-        
+
+
     
         // Invoke the LangGraph workflow
         const state = await sqlAgentGraph.invoke(

@@ -32,7 +32,7 @@ app.use(cors());
 app.options('*', cors());
 
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', 'http://192.168.1.117:3000');
+  res.header('Access-Control-Allow-Origin', 'http://192.168.1.117:3001');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   next();

@@ -162,131 +162,160 @@ createMcpServer().catch((err) => {
 });
 //#endregion
 
-// // src/agents/mcpServer.ts
 
-// // import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-// // import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-// // import {
-// //     CallToolRequestSchema,
-// //     ListResourcesRequestSchema,
-// //     ListToolsRequestSchema,
-// //     ReadResourceRequestSchema,
-// // } from "@modelcontextprotocol/sdk/types.js";
-// // import pg from "pg";
+//#region 
+/* USING SQL SERVER  */
+//#region 
+// src/mcp/startMcpServer.ts
+// import * as dotenv from "dotenv";
+// dotenv.config();
 
-// // export async function runMCPServer(databaseUrl: string) {
-// //     const server = new Server(
-// //         {
-// //             name: "example-servers/postgres",
-// //             version: "0.1.0",
-// //         },
-// //         {
-// //             capabilities: {
-// //                 resources: {},
-// //                 tools: {},
-// //             },
-// //         }
-// //     );
 
-// //     const resourceBaseUrl = new URL(databaseUrl.replace(/:(.*)@/, "@"));
-// //     resourceBaseUrl.protocol = "postgres:";
-// //     resourceBaseUrl.password = "";
+// import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+// import {
+//     CallToolRequestSchema,
+//     ListResourcesRequestSchema,
+//     ListToolsRequestSchema,
+//     ReadResourceRequestSchema,
+// } from "@modelcontextprotocol/sdk/types.js";
 
-// //     const pool = new pg.Pool({ connectionString: databaseUrl });
+// import sql from "mssql";
+// import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+// import { Readable, Writable } from "stream";
+// import { config } from '../config/database';
 
-// //     const SCHEMA_PATH = "schema";
+// // SQL Server connection config from environment or hardcoded (customize as needed)
 
-// //     server.setRequestHandler(ListResourcesRequestSchema, async () => {
-// //         const client = await pool.connect();
-// //         try {
-// //             const result = await client.query(
-// //                 "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"
-// //             );
-// //             return {
-// //                 resources: result.rows.map((row) => ({
-// //                     uri: new URL(`${row.table_name}/${SCHEMA_PATH}`, resourceBaseUrl).href,
-// //                     mimeType: "application/schema+json",
-// //                     name: `"${row.table_name}" database schema`,
-// //                 })),
-// //             };
-// //         } finally {
-// //             client.release();
-// //         }
-// //     });
 
-// //     server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
-// //         const resourceUrl = new URL(request.params.uri);
-// //         const pathComponents = resourceUrl.pathname.split("/");
-// //         const schema = pathComponents.pop();
-// //         const tableName = pathComponents.pop();
+// // Used only for formatting schema URLs
+// const resourceBaseUrl = new URL(`mssql://${config.server}/${config.database}`);
 
-// //         if (schema !== SCHEMA_PATH || !tableName || !/^[a-zA-Z0-9_]+$/.test(tableName)) {
-// //             throw new Error("Invalid resource URI or table name");
-// //         }
+// export async function createMcpServer(input?: NodeJS.ReadableStream, output?: NodeJS.WritableStream) {
+//     console.error("✅ Initializing MCP Server...");
 
-// //         const client = await pool.connect();
-// //         try {
-// //             const result = await client.query(
-// //                 "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = $1",
-// //                 [tableName]
-// //             );
-// //             return {
-// //                 contents: [
-// //                     {
-// //                         uri: request.params.uri,
-// //                         mimeType: "application/schema+json",
-// //                         text: JSON.stringify(result.rows, null, 2),
-// //                     },
-// //                 ],
-// //             };
-// //         } finally {
-// //             client.release();
-// //         }
-// //     });
+//     const pool = await sql.connect(config);
 
-// //     server.setRequestHandler(ListToolsRequestSchema, async () => ({
-// //         tools: [
-// //             {
-// //                 name: "query",
-// //                 description: "Run a read-only SQL query",
-// //                 inputSchema: {
-// //                     type: "object",
-// //                     properties: {
-// //                         sql: { type: "string" },
-// //                     },
-// //                 },
-// //             },
-// //         ],
-// //     }));
+//     const server = new Server(
+//         {
+//             name: "embedded-sqlserver",
+//             version: "0.1.0",
+//         },
+//         {
+//             capabilities: {
+//                 resources: {},
+//                 tools: {
+//                     query: {
+//                         description: "Run a read-only SQL query",
+//                         inputSchema: {
+//                             type: "object",
+//                             properties: {
+//                                 sql: { type: "string" },
+//                             },
+//                             required: ["sql"],
+//                         },
+//                     },
+//                 },
+//             },
+//         }
+//     );
 
-// //     server.setRequestHandler(CallToolRequestSchema, async (request) => {
-// //         if (request.params.name === "query") {
-// //             const sql = request.params.arguments?.sql as string;
-// //             const client = await pool.connect();
-// //             try {
-// //                 await client.query("BEGIN TRANSACTION READ ONLY");
-// //                 const result = await client.query(sql);
-// //                 return {
-// //                     content: [{ type: "text", text: JSON.stringify(result.rows, null, 2) }],
-// //                     isError: false,
-// //                 };
-// //             } catch (error: any) {
-// //                 return {
-// //                     content: [{ type: "text", text: `Query Error: ${error.message}` }],
-// //                     isError: true,
-// //                 };
-// //             } finally {
-// //                 await client.query("ROLLBACK").catch((e) =>
-// //                     console.warn("Could not roll back transaction:", e)
-// //                 );
-// //                 client.release();
-// //             }
-// //         }
-// //         throw new Error(`Unknown tool: ${request.params.name}`);
-// //     });
+//     console.error("✅ MCP Server created. Setting up request handlers...");
 
-// //     const transport = new StdioServerTransport();
-// //     await server.connect(transport);
-// // }
+//     server.setRequestHandler(ListResourcesRequestSchema, async () => {
+//         console.error("✅ Handling ListResourcesRequest...");
+//         const request = new sql.Request(pool);
+//         const result = await request.query(`
+//             SELECT TABLE_NAME 
+//             FROM INFORMATION_SCHEMA.TABLES 
+//             WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_CATALOG = '${config.database}'
+//         `);
+//         return {
+//             resources: result.recordset.map((row) => ({
+//                 uri: new URL(`${row.TABLE_NAME}/schema`, resourceBaseUrl).href,
+//                 mimeType: "application/schema+json",
+//                 name: `"${row.TABLE_NAME}" database schema`,
+//             })),
+//         };
+//     });
 
-// //#endregion
+//     server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+//         console.error("✅ Handling ReadResourceRequest...");
+//         const resourceUrl = new URL(request.params.uri);
+//         const pathComponents = resourceUrl.pathname.split("/");
+//         const schema = pathComponents.pop();
+//         const tableName = pathComponents.pop();
+
+//         if (schema !== "schema" || !tableName) {
+//             throw new Error("Invalid resource URI or missing table name");
+//         }
+
+//         const sqlRequest = new sql.Request(pool);
+//         const result = await sqlRequest.query(`
+//             SELECT COLUMN_NAME, DATA_TYPE 
+//             FROM INFORMATION_SCHEMA.COLUMNS 
+//             WHERE TABLE_NAME = '${tableName}'
+//         `);
+//         return {
+//             contents: [
+//                 {
+//                     uri: request.params.uri,
+//                     mimeType: "application/schema+json",
+//                     text: JSON.stringify(result.recordset, null, 2),
+//                 },
+//             ],
+//         };
+//     });
+
+//     server.setRequestHandler(ListToolsRequestSchema, async () => ({
+//         tools: [
+//             {
+//                 name: "query",
+//                 description: "Run a read-only SQL query",
+//                 method: 'callTool',
+//                 inputSchema: {
+//                     type: "object",
+//                     properties: {
+//                         sql: { type: "string" },
+//                     },
+//                     required: ["sql"],
+//                 },
+//             },
+//         ],
+//     }));
+
+//     server.setRequestHandler(CallToolRequestSchema, async (request) => {
+//         console.error("✅ Handling CallToolRequest...");
+//         if (request.params.name === "query") {
+//             const sqlText = `${request.params.arguments?.sql}`;
+//             try {
+//                 const result = await pool.request().query(sqlText);
+//                 console.log("query result >>>", result);
+                
+//                 return {
+//                     content: [{ type: "text", text: JSON.stringify(result.recordset, null, 2) }],
+//                     isError: false,
+//                 };
+//             } catch (err: any) {
+//                 return {
+//                     content: [{ type: "text", text: `❌ SQL Error: ${err.message}` }],
+//                     isError: true,
+//                 };
+//             }
+//         }
+//         throw new Error(`Unknown tool: ${request.params.name}`);
+//     });
+
+//     const transport = new StdioServerTransport(process.stdin as Readable, process.stdout as Writable);
+//     console.error("✅ Connecting server to stdio transport...");
+//     await server.connect(transport)
+
+//     console.error("✅ MCP Server connected to transport. Ready to handle requests.");
+// }
+
+// createMcpServer().catch((err) => {
+//     console.error("❌ MCP Server failed to start:", err);
+//     process.exit(1);
+// });
+//#endregion
+
+//#endregion
